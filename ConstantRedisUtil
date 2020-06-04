@@ -1,0 +1,76 @@
+@Service
+public class ConstantServiceimpl implements ConstantService {
+
+    @Autowired
+    RedisService redisService;
+
+    @Autowired
+    GetConstantMapper getConstantMapper;
+
+    private static Object re = new Object();
+
+
+    /**
+     * 通过传过来的key从redis中获取数据信息,如果redis中没有再去mysql中查,查完之后将信息存到redis中
+     * @param constanttypeen
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public List<ConstantVO> getContant(String constanttypeen) throws Exception {
+
+        List<ConstantVO> list = new ArrayList<>();
+        List<String> strs = new ArrayList<>();
+
+        //判断key是否存在redis中
+        if (redisService.exists("_" + constanttypeen)) {
+            //如果存在,则直接根据key,取出list集合
+            list = this.getContantList(constanttypeen);
+        } else {
+            //当出现高并发时,进行加锁处理
+            synchronized (re){
+                if (redisService.exists("_" + constanttypeen)){
+                    list = this.getContantList(constanttypeen);
+                } else{
+                    //如果不存在,则从数据库中取出数据
+                    list = getConstantMapper.getConstant(constanttypeen);
+                    //遍历list集合,将集合元素Constant实体类转换为string字符串存储
+                    Iterator<ConstantVO> iter = list.iterator();
+                    while (iter.hasNext()) {
+                        ConstantVO str = iter.next();
+                        String contant = JSON.toJSONString(str);
+                        //将实体类存到泛型为ConstantVO的list集合中
+                        strs.add(contant);
+                    }
+                    //存到redis中
+                    redisService.cacheList("_" + constanttypeen, strs);
+                }
+            }
+
+        }
+
+        return list;
+    }
+
+    /**
+     * 根据key,从redis中取出对应的list集合
+     * @param constanttypeen
+     * @return
+     * @throws Exception
+     */
+    public  List<ConstantVO> getContantList(String constanttypeen) throws Exception{
+        List<ConstantVO> list = new ArrayList<>();
+        // ("_"+ string)
+        List<String> strs = redisService.getCachedList("_" + constanttypeen);
+        //遍历list集合,将集合元素string类转换为Constant实体类
+        Iterator<String> iter = strs.iterator();
+        while (iter.hasNext()) {
+            String str = iter.next();
+            ConstantVO c = JSON.parseObject(str, ConstantVO.class);
+            //将转换后的实体类存到泛型为ConstantVO的list集合中
+            list.add(c);
+        }
+        return  list;
+    }
+
+}
