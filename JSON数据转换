@@ -1,0 +1,13 @@
+      
+        map.put("detailInfo",flowInfo.getFormData().get("detailInfo"));
+        map.put("bnsTransoErrorInfo",flowInfo.getFormData().get("bnsTransoErrorInfo"));
+        //json对象转换
+        SurveyErrorFlowInfo errorModel = JSON.parseObject(JSON.toJSONString(map.get("detailInfo")), SurveyErrorFlowInfo.class);
+        errorModel.setFlowId(flowInfo.getFlowId());
+        errorModel.setFlowNo(flowInfo.getFlowNo());
+        
+        //List<DataInfo> voList = JSON.parseArray(JSON.toJSONString(map.get("bnsTransoCorrigendumInfo")), DataInfo.class);
+
+        JSONArray array = flowInfo.getFormData().getJSONArray("bnsTransoErrorInfo");
+        //json对象转换
+        List<DataInfo> dataInfos = JSONArray.parseArray(JSON.toJSONString(array), DataInfo.class);
